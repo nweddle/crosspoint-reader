@@ -39,4 +39,5 @@ class TodoistActivity final : public Activity {
   void onWifiSelectionComplete(bool success);
   void performFetch();
   void sortTasksForDisplay();
+  void writeWallpaperIfEnabled();
 };

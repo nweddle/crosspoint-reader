@@ -1,6 +1,7 @@
 #include "TodoistActivity.h"
 
 #include <GfxRenderer.h>
+#include <HalStorage.h>
 #include <I18n.h>
 #include <Logging.h>
 #include <TodoistCredentialStore.h>
@@ -15,6 +16,7 @@
 #include "activities/network/WifiSelectionActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/ScreenshotUtil.h"
 
 namespace {
 constexpr int FETCH_PAGE_LIMIT = 30;
@@ -138,7 +140,36 @@ void TodoistActivity::performFetch() {
   sortTasksForDisplay();
   selectedIndex = 0;
   state = SHOWING_TASKS;
-  requestUpdate(true);
+  // Force a synchronous render so the framebuffer is populated before the
+  // wallpaper-mode write (otherwise getFrameBuffer() captures the previous
+  // LOADING screen).
+  requestUpdateAndWait();
+  writeWallpaperIfEnabled();
+}
+
+void TodoistActivity::writeWallpaperIfEnabled() {
+  const auto mode = TODOIST_STORE.getWallpaperMode();
+  if (mode == TodoistWallpaperMode::OFF) return;
+
+  const uint8_t* fb = renderer.getFrameBuffer();
+  if (!fb) {
+    LOG_ERR("Todoist", "Framebuffer unavailable; cannot write wallpaper");
+    return;
+  }
+
+  const char* path = nullptr;
+  if (mode == TodoistWallpaperMode::ROTATION) {
+    Storage.mkdir("/.sleep");
+    path = "/.sleep/todoist.bmp";
+  } else {
+    path = "/sleep.bmp";
+  }
+
+  if (ScreenshotUtil::saveFramebufferAsBmp(path, fb, renderer.getDisplayWidth(), renderer.getDisplayHeight())) {
+    LOG_DBG("Todoist", "Wallpaper saved: %s", path);
+  } else {
+    LOG_ERR("Todoist", "Failed to save wallpaper: %s", path);
+  }
 }
 
 void TodoistActivity::sortTasksForDisplay() {
