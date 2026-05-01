@@ -130,6 +130,17 @@ inline const std::vector<SettingInfo>& getSettingsList() {
               TODOIST_STORE.saveToFile();
             },
             "todoistFilterQuery", StrId::STR_TODOIST),
+        SettingInfo::DynamicEnum(
+            StrId::STR_TODOIST_WALLPAPER,
+            {StrId::STR_TODOIST_WALLPAPER_OFF, StrId::STR_TODOIST_WALLPAPER_ROTATION,
+             StrId::STR_TODOIST_WALLPAPER_ALWAYS},
+            [] { return static_cast<uint8_t>(TODOIST_STORE.getWallpaperMode()); },
+            [](uint8_t v) {
+              if (v > static_cast<uint8_t>(TodoistWallpaperMode::ALWAYS)) v = 0;
+              TODOIST_STORE.setWallpaperMode(static_cast<TodoistWallpaperMode>(v));
+              TODOIST_STORE.saveToFile();
+            },
+            "todoistWallpaperMode", StrId::STR_TODOIST),
         // --- Status Bar Settings (web-only, uses StatusBarSettingsActivity) ---
         SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
                             "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR),

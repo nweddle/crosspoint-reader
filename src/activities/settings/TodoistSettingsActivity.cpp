@@ -11,9 +11,21 @@
 #include "fontIds.h"
 
 namespace {
-constexpr int MENU_ITEMS = 3;
+constexpr int MENU_ITEMS = 4;
 const StrId menuNames[MENU_ITEMS] = {StrId::STR_TODOIST_API_TOKEN, StrId::STR_TODOIST_FILTER_QUERY,
-                                     StrId::STR_TODOIST_VIEW_TASKS};
+                                     StrId::STR_TODOIST_WALLPAPER, StrId::STR_TODOIST_VIEW_TASKS};
+
+const char* wallpaperModeLabel(TodoistWallpaperMode mode) {
+  switch (mode) {
+    case TodoistWallpaperMode::ROTATION:
+      return tr(STR_TODOIST_WALLPAPER_ROTATION);
+    case TodoistWallpaperMode::ALWAYS:
+      return tr(STR_TODOIST_WALLPAPER_ALWAYS);
+    case TodoistWallpaperMode::OFF:
+    default:
+      return tr(STR_TODOIST_WALLPAPER_OFF);
+  }
+}
 }  // namespace
 
 void TodoistSettingsActivity::onEnter() {
@@ -65,6 +77,15 @@ void TodoistSettingsActivity::handleSelection() {
     return;
   }
   if (selectedIndex == 2) {
+    // Wallpaper mode — cycle Off / Rotation / Always
+    const auto cur = static_cast<uint8_t>(TODOIST_STORE.getWallpaperMode());
+    const auto next = (cur + 1) % 3;
+    TODOIST_STORE.setWallpaperMode(static_cast<TodoistWallpaperMode>(next));
+    TODOIST_STORE.saveToFile();
+    requestUpdate();
+    return;
+  }
+  if (selectedIndex == 3) {
     // View Tasks
     startActivityForResult(std::make_unique<TodoistActivity>(renderer, mappedInput), [](const ActivityResult&) {});
   }
@@ -83,7 +104,14 @@ void TodoistSettingsActivity::render(RenderLock&&) {
   const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing * 2;
   GUI.drawList(
       renderer, Rect{0, contentTop, pageWidth, contentHeight}, static_cast<int>(MENU_ITEMS),
-      static_cast<int>(selectedIndex), [](int index) { return std::string(I18N.get(menuNames[index])); }, nullptr,
+      static_cast<int>(selectedIndex), [](int index) { return std::string(I18N.get(menuNames[index])); },
+      [](int index) {
+        // Subtitle: warn that "Always" overwrites the user's /sleep.bmp.
+        if (index == 2 && TODOIST_STORE.getWallpaperMode() == TodoistWallpaperMode::ALWAYS) {
+          return std::string(tr(STR_TODOIST_WALLPAPER_HINT_OVERWRITE));
+        }
+        return std::string("");
+      },
       nullptr,
       [](int index) {
         if (index == 0) {
@@ -92,6 +120,9 @@ void TodoistSettingsActivity::render(RenderLock&&) {
         if (index == 1) {
           const auto& filter = TODOIST_STORE.getFilterQuery();
           return filter.empty() ? std::string(tr(STR_DEFAULT_VALUE)) : filter;
+        }
+        if (index == 2) {
+          return std::string(wallpaperModeLabel(TODOIST_STORE.getWallpaperMode()));
         }
         return std::string("");
       },
