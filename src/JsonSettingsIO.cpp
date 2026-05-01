@@ -14,6 +14,7 @@
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
 #include "SettingsList.h"
+#include "TodoistCredentialStore.h"
 #include "WifiCredentialStore.h"
 
 // Convert legacy settings.
@@ -269,6 +270,35 @@ bool JsonSettingsIO::loadKOReader(KOReaderCredentialStore& store, const char* js
   store.matchMethod = static_cast<DocumentMatchMethod>(method);
 
   LOG_DBG("KRS", "Loaded KOReader credentials for user: %s", store.username.c_str());
+  return true;
+}
+
+// ---- TodoistCredentialStore ----
+
+bool JsonSettingsIO::saveTodoist(const TodoistCredentialStore& store, const char* path) {
+  JsonDocument doc;
+  doc["apiToken_obf"] = obfuscation::obfuscateToBase64(store.getApiToken());
+  doc["filterQuery"] = store.getFilterQuery();
+
+  String json;
+  serializeJson(doc, json);
+  return Storage.writeFile(path, json);
+}
+
+bool JsonSettingsIO::loadTodoist(TodoistCredentialStore& store, const char* json) {
+  JsonDocument doc;
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    LOG_ERR("TDS", "JSON parse error: %s", error.c_str());
+    return false;
+  }
+
+  bool ok = false;
+  store.apiToken = obfuscation::deobfuscateFromBase64(doc["apiToken_obf"] | "", &ok);
+  if (!ok) store.apiToken.clear();
+  store.filterQuery = doc["filterQuery"] | std::string("");
+
+  LOG_DBG("TDS", "Loaded Todoist credentials (token %s)", store.apiToken.empty() ? "absent" : "present");
   return true;
 }
 
