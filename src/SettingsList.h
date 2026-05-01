@@ -7,6 +7,7 @@
 
 #include "CrossPointSettings.h"
 #include "KOReaderCredentialStore.h"
+#include "TodoistCredentialStore.h"
 #include "activities/settings/SettingsActivity.h"
 
 // Shared settings list used by both the device settings UI and the web settings API.
@@ -114,6 +115,21 @@ inline const std::vector<SettingInfo>& getSettingsList() {
               KOREADER_STORE.saveToFile();
             },
             "koMatchMethod", StrId::STR_KOREADER_SYNC),
+        // --- Todoist (web-only, uses TodoistCredentialStore) ---
+        SettingInfo::DynamicString(
+            StrId::STR_TODOIST_API_TOKEN, [] { return TODOIST_STORE.getApiToken(); },
+            [](const std::string& v) {
+              TODOIST_STORE.setApiToken(v);
+              TODOIST_STORE.saveToFile();
+            },
+            "todoistApiToken", StrId::STR_TODOIST),
+        SettingInfo::DynamicString(
+            StrId::STR_TODOIST_FILTER_QUERY, [] { return TODOIST_STORE.getFilterQuery(); },
+            [](const std::string& v) {
+              TODOIST_STORE.setFilterQuery(v);
+              TODOIST_STORE.saveToFile();
+            },
+            "todoistFilterQuery", StrId::STR_TODOIST),
         // --- Status Bar Settings (web-only, uses StatusBarSettingsActivity) ---
         SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
                             "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR),
