@@ -279,6 +279,7 @@ bool JsonSettingsIO::saveTodoist(const TodoistCredentialStore& store, const char
   JsonDocument doc;
   doc["apiToken_obf"] = obfuscation::obfuscateToBase64(store.getApiToken());
   doc["filterQuery"] = store.getFilterQuery();
+  doc["wallpaperMode"] = static_cast<uint8_t>(store.getWallpaperMode());
 
   String json;
   serializeJson(doc, json);
@@ -297,6 +298,9 @@ bool JsonSettingsIO::loadTodoist(TodoistCredentialStore& store, const char* json
   store.apiToken = obfuscation::deobfuscateFromBase64(doc["apiToken_obf"] | "", &ok);
   if (!ok) store.apiToken.clear();
   store.filterQuery = doc["filterQuery"] | std::string("");
+  uint8_t mode = doc["wallpaperMode"] | static_cast<uint8_t>(0);
+  if (mode > static_cast<uint8_t>(TodoistWallpaperMode::ALWAYS)) mode = 0;
+  store.wallpaperMode = static_cast<TodoistWallpaperMode>(mode);
 
   LOG_DBG("TDS", "Loaded Todoist credentials (token %s)", store.apiToken.empty() ? "absent" : "present");
   return true;
