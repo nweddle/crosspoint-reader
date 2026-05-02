@@ -125,24 +125,27 @@ void TodoistActivity::performFetch() {
   const auto err =
       TodoistClient::getTasks(TODOIST_STORE.getEffectiveFilterQuery(), "", FETCH_PAGE_LIMIT, tasks, nextCursor);
 
-  RenderLock lock(*this);
-  if (err != TodoistClient::OK) {
-    state = ERROR_STATE;
-    statusMessage = TodoistClient::errorString(err);
-    requestUpdate(true);
-    return;
+  {
+    RenderLock lock(*this);
+    if (err != TodoistClient::OK) {
+      state = ERROR_STATE;
+      statusMessage = TodoistClient::errorString(err);
+      requestUpdate(true);
+      return;
+    }
+    if (tasks.empty()) {
+      state = EMPTY;
+      requestUpdate(true);
+      return;
+    }
+    sortTasksForDisplay();
+    selectedIndex = 0;
+    state = SHOWING_TASKS;
   }
-  if (tasks.empty()) {
-    state = EMPTY;
-    requestUpdate(true);
-    return;
-  }
-  sortTasksForDisplay();
-  selectedIndex = 0;
-  state = SHOWING_TASKS;
   // Force a synchronous render so the framebuffer is populated before the
   // wallpaper-mode write (otherwise getFrameBuffer() captures the previous
-  // LOADING screen).
+  // LOADING screen). RenderLock must be released first — requestUpdateAndWait
+  // asserts that the caller is not holding it.
   requestUpdateAndWait();
   writeWallpaperIfEnabled();
 }
